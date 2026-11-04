@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Screen Recorder Pro</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">● Screen Recorder Pro</div>
+  <div class="top-actions">
+    <span id="recStatus" class="status">Ready</span>
+    <span id="recTimer" class="timer">00:00</span>
+    <button id="btnRecord" class="btn primary">● Record</button>
+    <button id="btnPause" class="btn" disabled>Pause</button>
+    <button id="btnStop" class="btn danger" disabled>Stop</button>
+    <button id="btnScreenshot" class="btn">📸 Screenshot</button>
+  </div>
+</header>
+
+<div id="updateBanner" class="update-banner hidden">
+  <span id="updateBannerText"></span>
+  <button id="btnUpdateAction" class="btn primary">Download update</button>
+  <button id="btnUpdateDismiss" class="btn">Dismiss</button>
+</div>
+
+<main class="layout">
+  <!-- LEFT: sources + library -->
+  <aside class="panel left">
+    <h2>Source</h2>
+    <div class="field-row">
+      <label><input type="checkbox" id="chkMic"> Microphone</label>
+      <label><input type="checkbox" id="chkWebcam"> Webcam overlay</label>
+      <label><input type="checkbox" id="chkSysAudio" title="System audio support varies by OS — see README"> System audio</label>
+    </div>
+    <div class="field-row">
+      <label>Countdown (s) <input type="number" id="inpCountdown" value="3" min="0" max="10"></label>
+      <label>Frame rate <input type="number" id="inpFps" value="30" min="15" max="60"></label>
+    </div>
+    <button id="btnRefreshSources" class="btn wide">Refresh screens / windows</button>
+    <div id="sourceList" class="source-list"><p class="muted">Loading sources…</p></div>
+
+    <h2>Library</h2>
+    <p class="muted small">Saved recordings &amp; screenshots. Click a video to load it in the editor; click a screenshot to edit it.</p>
+    <div id="libraryList" class="library-list"></div>
+    <button id="btnClearLibrary" class="btn wide ghost">Clear library list</button>
+  </aside>
+
+  <!-- CENTER: preview -->
+  <section class="center">
+    <div class="preview-wrap" id="previewWrap">
+      <video id="previewVideo" autoplay muted playsinline></video>
+      <video id="webcamVideo" autoplay muted playsinline class="webcam hidden"></video>
+      <canvas id="shotCanvas" class="hidden"></canvas>
+      <div id="countdownOverlay" class="overlay hidden"></div>
+      <div id="cursorHighlight" class="cursor-highlight hidden"></div>
+      <div id="clickRipple" class="ripple hidden"></div>
+      <div id="annotationOverlay" class="annotation hidden"></div>
+      <div id="captionOverlay" class="caption hidden"></div>
+      <div id="editorHint" class="hint">Pick a screen or window on the left, then Record — or take a Screenshot. After a recording stops, it opens in the editor below.</div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="tabRecord">Record</button>
+      <button class="tab" data-tab="tabShot">Screenshot editor</button>
+      <button class="tab" data-tab="tabSettings">Settings</button>
+    </div>
+
+    <div id="tabRecord" class="tabpane active">
+      <p class="muted">Shortcuts: <b>Ctrl/Cmd+Shift+R</b> record/stop · <b>Ctrl/Cmd+Shift+P</b> pause · <b>Ctrl/Cmd+Shift+S</b> screenshot · <b>Space</b> play/pause editor video.</p>
+      <p class="muted">Click on the preview while a recording is loaded to drop a manual zoom focus point at that spot.</p>
+    </div>
+
+    <div id="tabShot" class="tabpane">
+      <div class="toolbar">
+        <label>Tool
+          <select id="shotTool">
+            <option value="rect">Rectangle</option>
+            <option value="arrow">Arrow</option>
+            <option value="text">Text</option>
+            <option value="highlight">Highlight</option>
+            <option value="blur">Blur / pixelate</option>
+            <option value="crop">Crop (drag, then Apply)</option>
+          </select>
+        </label>
+        <label>Colour <input type="color" id="shotColor" value="#ff3b30"></label>
+        <label>Line <input type="number" id="shotLine" value="4" min="1" max="20"></label>
+        <input id="shotText" type="text" placeholder="Text for Text tool">
+        <button id="btnApplyCrop" class="btn">Apply crop</button>
+        <button id="btnUndoShot" class="btn">Undo</button>
+        <button id="btnClearShot" class="btn">Clear marks</button>
+        <button id="btnSaveShot" class="btn primary">Save screenshot…</button>
+        <button id="btnSaveShotJpg" class="btn">Save as JPG…</button>
+      </div>
+      <p class="muted small">Tip: take a screenshot first (top bar), then draw on the canvas above. Crop drags a rectangle; Apply crop trims to it.</p>
+    </div>
+
+    <div id="tabSettings" class="tabpane">
+      <div class="field-row">
+        <label>Default save folder <input type="text" id="inpSaveDir" readonly></label>
+        <button id="btnPickSaveDir" class="btn">Choose…</button>
+      </div>
+      <div class="field-row">
+        <label>Default zoom level <input type="number" id="inpZoomLevel" value="1.8" min="1.2" max="3" step="0.1"></label>
+        <label>Zoom transition (s) <input type="number" id="inpZoomSpeed" value="0.6" min="0.2" max="2" step="0.1"></label>
+      </div>
+      <div class="field-row">
+        <label><input type="checkbox" id="chkCursorHl" checked> Cursor highlight in editor</label>
+        <label><input type="checkbox" id="chkRipple" checked> Click ripple on zoom keyframes</label>
+      </div>
+      <button id="btnSaveSettings" class="btn primary">Save settings</button>
+      <span id="settingsMsg" class="muted"></span>
+      <h3>Updates</h3>
+      <div class="field-row">
+        <span class="muted small">Version: <b id="appVersion">…</b></span>
+        <label><input type="checkbox" id="chkAutoUpdate" checked> Check for updates on startup</label>
+        <button id="btnCheckUpdates" class="btn">Check for updates now</button>
+      </div>
+      <p id="updateStatus" class="muted small">Updates come from GitHub Releases (thisnaeem/screen-recorder-pro-releases). In a dev run (npm start) checks are skipped — updates only work in a packaged build.</p>
+    </div>
+
+    <!-- BOTTOM TIMELINE -->
+    <div class="timeline">
+      <div class="tl-row">
+        <button id="btnPlayEditor" class="btn">▶ Play</button>
+        <span id="tlTime">00:00 / 00:00</span>
+        <input type="range" id="tlScrub" min="0" max="1000" value="0">
+      </div>
+      <div class="tl-row">
+        <label>Trim start (s) <input type="number" id="inpTrimStart" value="0" min="0" step="0.1"></label>
+        <label>Trim end (s) <input type="number" id="inpTrimEnd" value="0" min="0" step="0.1"></label>
+        <label>Speed <select id="selSpeed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></label>
+        <label><input type="checkbox" id="chkBlurBg"> Blurred background</label>
+      </div>
+      <div id="keyframeTrack" class="keyframe-track"></div>
+    </div>
+  </section>
+
+  <!-- RIGHT: editor -->
+  <aside class="panel right">
+    <h2>Editor</h2>
+    <div class="field-row">
+      <button id="btnAutoZoom" class="btn primary wide">✦ Auto zoom (follow action)</button>
+    </div>
+    <div class="field-row">
+      <label>Zoom level <input type="number" id="inpEditZoom" value="1.8" min="1.2" max="3" step="0.1"></label>
+      <button id="btnAddKeyframe" class="btn">+ Keyframe here</button>
+    </div>
+    <div id="keyframeList" class="kf-list"><p class="muted small">No keyframes yet. Auto zoom creates them, or click the preview to set a focus point and add one.</p></div>
+
+    <h3>Text overlay</h3>
+    <div class="field-row"><input id="inpAnnText" type="text" placeholder="Overlay text"></div>
+    <div class="field-row">
+      <label>From (s) <input type="number" id="inpAnnStart" value="0" min="0" step="0.1"></label>
+      <label>To (s) <input type="number" id="inpAnnEnd" value="5" min="0" step="0.1"></label>
+    </div>
+    <button id="btnAddAnn" class="btn wide">Add text overlay</button>
+    <div id="annList" class="kf-list"></div>
+
+    <h3>Caption</h3>
+    <div class="field-row"><input id="inpCapText" type="text" placeholder="Caption text"></div>
+    <div class="field-row">
+      <label>From (s) <input type="number" id="inpCapStart" value="0" min="0" step="0.1"></label>
+      <label>To (s) <input type="number" id="inpCapEnd" value="5" min="0" step="0.1"></label>
+    </div>
+    <button id="btnAddCap" class="btn wide">Add caption</button>
+    <div id="capList" class="kf-list"></div>
+
+    <h2>Export</h2>
+    <div class="field-row">
+      <label>Format
+        <select id="selExportFormat">
+          <option value="webm">WebM (recommended)</option>
+          <option value="mp4">MP4 (if browser codec supports it)</option>
+        </select>
+      </label>
+    </div>
+    <button id="btnExportVideo" class="btn primary wide">Export edited video…</button>
+    <progress id="exportProgress" value="0" max="100" class="wide"></progress>
+    <p id="exportStatus" class="muted small"></p>
+    <button id="btnExportProject" class="btn wide">Export project JSON…</button>
+    <button id="btnSaveRecording" class="btn wide">Save raw recording…</button>
+    <p class="muted small">MP4 via MediaRecorder depends on the Chromium codec build — if unsupported, the app falls back to WebM and says so. See README.</p>
+  </aside>
+</main>
+
+<script src="renderer.js"></script>
+</body>
+</html>
